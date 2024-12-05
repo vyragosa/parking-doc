@@ -1,0 +1,342 @@
+openapi: 3.0.3
+info:
+  title: Parking Reservation System API
+  description: API для системы бронирования парковки
+  version: "1.0"
+servers:
+  - url: https://hihihi.com/api/v1
+security:
+  - BearerAuth: []
+
+paths:
+  /parking-spots:
+    get:
+      summary: Получение списка доступных парковочных мест
+      description: Возвращает список доступных парковочных мест с поддержкой пагинации, сортировки и фильтрации.
+      parameters:
+        - name: date
+          in: query
+          description: Дата для поиска доступных мест.
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: start_time
+          in: query
+          description: Время начала поиска1.
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          description: Время окончания поиска.
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: location
+          in: query
+          description: Локация парковки (необязательный фильтр, может быть на уровне здания, зоны или уровня).
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Номер страницы для пагинации.
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          description: Количество элементов на странице.
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+        - name: sort
+          in: query
+          description: Параметры сортировки (например, "available_from", "location").
+          required: false
+          schema:
+            type: string
+            enum:
+              - available_from
+              - location
+      responses:
+        "200":
+          description: Успешное получение списка парковочных мест.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkingSpotsList"
+        "400":
+          description: Неверные параметры запроса (например, некорректный формат времени или даты).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Внутренняя ошибка сервера.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bookings:
+    get:
+      summary: Получение списка бронирований пользователя
+      description: Возвращает список текущих и будущих бронирований пользователя.
+      parameters:
+        - name: user_id
+          in: query
+          description: Уникальный идентификатор пользователя.
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Номер страницы для пагинации.
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          description: Количество элементов на странице.
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        "200":
+          description: Успешное получение списка бронирований пользователя.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingsList"
+        "400":
+          description: Неверные параметры запроса.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Внутренняя ошибка сервера.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      summary: Создание нового бронирования парковочного места
+      description: Создает новое бронирование для парковочного места.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Booking"
+      responses:
+        "201":
+          description: Бронирование успешно создано.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+        "400":
+          description: Неверные данные для бронирования.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Внутренняя ошибка сервера.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bookings/{booking_id}:
+    patch:
+      summary: Изменение времени бронирования
+      description: Изменяет время начала и окончания существующего бронирования.
+      parameters:
+        - name: booking_id
+          in: path
+          description: Уникальный идентификатор бронирования.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingUpdateRequest"
+      responses:
+        "200":
+          description: Бронирование успешно обновлено.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+        "400":
+          description: Неверные параметры запроса.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Бронирование с указанным идентификатором не найдено.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      summary: Отмена бронирования парковочного места
+      description: Отменяет указанное бронирование.
+      parameters:
+        - name: booking_id
+          in: path
+          description: Уникальный идентификатор бронирования.
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Бронирование успешно отменено.
+        "404":
+          description: Бронирование с указанным идентификатором не найдено.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    ParkingSpot:
+      type: object
+      properties:
+        parking_spot_id:
+          type: string
+          description: Уникальный строковый идентификатор парковочного места.
+        location:
+          type: string
+          description: Локация парковки.
+        status:
+          type: string
+          enum:
+            - available
+            - occupied
+          description: Статус парковочного места.
+        available_from:
+          type: string
+          format: date-time
+          description: Время начала доступности парковочного места.
+        available_to:
+          type: string
+          format: date-time
+          description: Время окончания доступности парковочного места.
+
+    ParkingSpotsList:
+      type: object
+      properties:
+        parking_spots:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParkingSpot"
+        total_count:
+          type: integer
+          description: Общее количество доступных парковочных мест.
+        page:
+          type: integer
+          description: Номер текущей страницы.
+        page_size:
+          type: integer
+          description: Количество элементов на странице.
+
+    Booking:
+      type: object
+      properties:
+        booking_id:
+          type: string
+          description: Уникальный строковый идентификатор бронирования.
+        user_id:
+          type: string
+          description: Идентификатор пользователя, сделавшего бронирование.
+        parking_spot_id:
+          type: string
+          description: Идентификатор парковочного места.
+        start_time:
+          type: string
+          format: date-time
+          description: Время начала бронирования.
+        end_time:
+          type: string
+          format: date-time
+          description: Время окончания бронирования.
+        status:
+          type: string
+          enum:
+            - confirmed
+            - cancelled
+            - pending
+          description: Статус бронирования.
+
+    BookingUpdateRequest:
+      type: object
+      required:
+        - start_time
+        - end_time
+      properties:
+        start_time:
+          type: string
+          format: date-time
+          description: Новое время начала бронирования.
+        end_time:
+          type: string
+          format: date-time
+          description: Новое время окончания бронирования.
+
+    BookingsList:
+      type: object
+      properties:
+        bookings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Booking"
+          description: Список бронирований.
+        total_count:
+          type: integer
+          description: Общее количество бронирований.
+        page:
+          type: integer
+          description: Номер текущей страницы.
+        page_size:
+          type: integer
+          description: Количество записей на странице.
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: Код ошибки.
+        message:
+          type: string
+          description: Описание ошибки.
+
+securitySchemes:
+  BearerAuth:
+    type: http
+    scheme: bearer
+    bearerFormat: JWT
